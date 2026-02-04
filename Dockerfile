@@ -14,7 +14,8 @@ RUN apt-get update && apt-get install -y \
     procps \
     file \
     sudo \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && chmod 755 /etc/ssl/certs && chmod 644 /etc/ssl/certs/ca-certificates.crt
 
 # Install Bun (required for build)
 RUN curl -fsSL https://bun.sh/install | bash
@@ -29,10 +30,9 @@ RUN useradd -m -s /bin/bash linuxbrew && \
 # Download and install Homebrew manually
 RUN mkdir -p /home/linuxbrew/.linuxbrew/Homebrew && \
     git clone --depth 1 https://github.com/Homebrew/brew /home/linuxbrew/.linuxbrew/Homebrew && \
-    chown -R linuxbrew:linuxbrew /home/linuxbrew/.linuxbrew && \
-    ln -s /home/linuxbrew/.linuxbrew/Homebrew/bin/brew /home/linuxbrew/.linuxbrew/bin/brew || true && \
     mkdir -p /home/linuxbrew/.linuxbrew/bin && \
-    ln -s /home/linuxbrew/.linuxbrew/Homebrew/bin/brew /home/linuxbrew/.linuxbrew/bin/brew
+    ln -s /home/linuxbrew/.linuxbrew/Homebrew/bin/brew /home/linuxbrew/.linuxbrew/bin/brew && \
+    chown -R linuxbrew:linuxbrew /home/linuxbrew/.linuxbrew
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin:${PATH}"
 ENV HOMEBREW_NO_AUTO_UPDATE=1
 ENV HOMEBREW_NO_INSTALL_CLEANUP=1
@@ -61,10 +61,12 @@ RUN npm_config_script_shell=bash pnpm ui:build
 RUN rm -rf .git node_modules/.cache
 
 # Create app user (node already exists in base image)
+# Add node user to linuxbrew group for Homebrew access
 RUN mkdir -p /home/node/.openclaw /home/node/.openclaw/workspace \
     && chown -R node:node /home/node /app \
     && chmod -R 755 /home/node/.openclaw \
-    && chown -R node:node /home/linuxbrew/.linuxbrew 2>/dev/null || true
+    && usermod -aG linuxbrew node \
+    && chmod -R g+w /home/linuxbrew/.linuxbrew
 
 USER node
 
