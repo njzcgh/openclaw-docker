@@ -15,6 +15,8 @@ RUN apt-get update && apt-get install -y \
     file \
     sudo \
     && rm -rf /var/lib/apt/lists/* \
+    # Fix SSL cert permissions (755/644 are standard Unix permissions for certs)
+    # Allows non-root users to verify SSL connections
     && chmod 755 /etc/ssl/certs && chmod 644 /etc/ssl/certs/ca-certificates.crt
 
 # Install Bun (required for build)
@@ -22,12 +24,13 @@ RUN curl -fsSL https://bun.sh/install | bash
 ENV PATH="/root/.bun/bin:${PATH}"
 
 # Install Homebrew (required for first-party skills)
-# Create linuxbrew user and install Homebrew as that user
+# Create linuxbrew user and grant sudo access (required for Homebrew package installations)
 RUN useradd -m -s /bin/bash linuxbrew && \
     echo 'linuxbrew ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers && \
     mkdir -p /home/linuxbrew/.linuxbrew && \
     chown -R linuxbrew:linuxbrew /home/linuxbrew/.linuxbrew
-# Download and install Homebrew manually
+# Download and install Homebrew manually (shallow clone to reduce image size)
+# Note: HOMEBREW_NO_AUTO_UPDATE is set below to disable updates
 RUN mkdir -p /home/linuxbrew/.linuxbrew/Homebrew && \
     git clone --depth 1 https://github.com/Homebrew/brew /home/linuxbrew/.linuxbrew/Homebrew && \
     mkdir -p /home/linuxbrew/.linuxbrew/bin && \
