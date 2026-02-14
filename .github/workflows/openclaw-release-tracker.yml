@@ -22,7 +22,22 @@ jobs:
         id: check_release
         run: |
           # Get the latest release from OpenClaw repository
-          LATEST_RELEASE=$(curl -s https://api.github.com/repos/openclaw/openclaw/releases/latest | jq -r '.tag_name // empty')
+          RESPONSE=$(curl -s -w "\n%{http_code}" https://api.github.com/repos/openclaw/openclaw/releases/latest)
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Failed to fetch OpenClaw releases. HTTP status: $HTTP_CODE"
+            echo "Response: $BODY"
+            exit 1
+          fi
+          
+          LATEST_RELEASE=$(echo "$BODY" | jq -r '.tag_name // empty')
+          
+          if [ "$LATEST_RELEASE" = "null" ] || [ -z "$LATEST_RELEASE" ]; then
+            echo "No releases found or tag_name is null"
+            exit 1
+          fi
           
           # Get the latest commit from main branch if no releases
           if [ -z "$LATEST_RELEASE" ]; then
